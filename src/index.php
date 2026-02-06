@@ -14,6 +14,12 @@ $url = Url::getInstance();
 // crée l'objet d'accès au contrôleur
 $controle = new Controle();
 
+// LOGS DE DEBUG
+error_log("=== DEBUT index.php ===");
+error_log("Méthode HTTP : " . $url->recupMethodeHTTP());
+error_log("Table : " . $url->recupVariable("table"));
+error_log("ID : " . $url->recupVariable("id"));
+
 // vérifie l'authentification
 if (!$url->authentification()){
     // l'authentification a échoué

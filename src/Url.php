@@ -122,20 +122,26 @@ class Url {
      * @return array
      */
     private function recupAllData() : array{
+        error_log("=== recupAllData appelé ===");
         $data = [];
         if(!empty($_GET)){
             $data = array_merge($data, $_GET);
         }
         if(!empty($_POST)){
+            error_log("POST : " . print_r($_POST, true));
             $data = array_merge($data, $_POST);
         }
         $input = file_get_contents('php://input');
+        error_log("php://input brut : [" . $input . "]");
         parse_str($input, $postData);
-        $data = array_merge($data, $postData);    
+        error_log("postData après parse_str : " . print_r($postData, true));
+        $data = array_merge($data, $postData);
+        error_log("data AVANT htmlspecialchars : " . print_r($data, true));
         // htmlspeciachars appliqué à chaque valeur du tableau
         $data = array_map(function($value) {
             return htmlspecialchars($value, ENT_NOQUOTES);
         }, $data);
+        error_log("data APRES htmlspecialchars : " . print_r($data, true));
         return $data;
     }
 

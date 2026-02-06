@@ -65,6 +65,12 @@ class MyAccessBDD extends AccessBDD {
         switch($table){
             case "" :
                 // return $this->uneFonction(parametres);
+            case "livre" :
+                return $this->insertLivre($champs);
+            case "dvd" :
+                return $this->insertDvd($champs);
+            case "revue" :
+                return $this->insertRevue($champs);
             default:                    
                 // cas général
                 return $this->insertOneTupleOneTable($table, $champs);	
@@ -83,6 +89,12 @@ class MyAccessBDD extends AccessBDD {
         switch($table){
             case "" :
                 // return $this->uneFonction(parametres);
+            case "livre" :
+                return $this->updateLivre($id, $champs);
+            case "dvd" :
+                return $this->updateDvd($id, $champs);
+            case "revue" :
+                return $this->updateRevue($id, $champs);
             default:                    
                 // cas général
                 return $this->updateOneTupleOneTable($table, $id, $champs);
@@ -100,6 +112,12 @@ class MyAccessBDD extends AccessBDD {
         switch($table){
             case "" :
                 // return $this->uneFonction(parametres);
+            case "livre" :
+                return $this->deleteOneLivre($champs);
+            case "dvd" :
+                return $this->deleteOneDvd($champs);
+            case "revue" :
+                return $this->deleteOneRevue($champs);
             default:                    
                 // cas général
                 return $this->deleteTuplesOneTable($table, $champs);	
@@ -275,6 +293,414 @@ class MyAccessBDD extends AccessBDD {
         $requete .= "where e.id = :id ";
         $requete .= "order by e.dateAchat DESC";
         return $this->conn->queryBDD($requete, $champNecessaire);
-    }		    
+    }
+    
+    /**
+     * Supprime un document de type livre
+     * @param array|null $champs
+     * @return int|null
+     */
+    private function deleteOneLivre(?array $champs) :?int{
+        
+        if(empty($champs) || !isset($champs['id'])){
+            return null;
+        }
+        
+        $id = $champs['id'];
+        
+        try {
+            $this->conn->beginTransaction();
+            $params = ['id' => $id];
+            
+            // On vérifie le retour de chaque opération
+            $req1 = $this->conn->updateBDD("DELETE FROM livre WHERE id = :id", $params);
+            $req2 = $this->conn->updateBDD("DELETE FROM livres_dvd WHERE id = :id", $params);
+            $req3 = $this->conn->updateBDD("DELETE FROM document WHERE id = :id", $params);
+
+            // Vérification : si une requête a renvoyé null, on annule
+            if ($req1 == 1 && $req2 == 1 && $req3 == 1) {
+                $this->conn->commit();
+                return 1;
+            } else {
+                $this->conn->rollBack();
+                return null;
+            }
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return null;
+        }
+    }
+    
+    /**
+     * Supprime un document de type dvd
+     * @param array|null $champs
+     * @return int|null
+     */
+    private function deleteOneDvd(?array $champs) :?int{
+        
+        if(empty($champs) || !isset($champs['id'])){
+            return null;
+        }
+        
+        $id = $champs['id'];
+        
+        try {
+            $this->conn->beginTransaction();
+            $params = ['id' => $id];
+            
+            // On vérifie le retour de chaque opération
+            $req1 = $this->conn->updateBDD("DELETE FROM dvd WHERE id = :id", $params);
+            $req2 = $this->conn->updateBDD("DELETE FROM livres_dvd WHERE id = :id", $params);
+            $req3 = $this->conn->updateBDD("DELETE FROM document WHERE id = :id", $params);
+
+            // Vérification : si une requête a renvoyé null, on annule
+            if ($req1 == 1 && $req2 == 1 && $req3 == 1) {
+                $this->conn->commit();
+                return 1;
+            } else {
+                $this->conn->rollBack();
+                return null;
+            }
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            error_log("ERREUR CRITIQUE updateDvd : " . $ex->getMessage());
+            return null;
+        }
+    }
+    
+    private function deleteOneRevue(?array $champs) :?int{
+        
+        if(empty($champs) || !isset($champs['id'])){
+            return null;
+        }
+
+        $id = $champs['id'];
+
+        try {
+            $this->conn->beginTransaction();
+            $params = ['id' => $id];
+
+            $req1 = $this->conn->updateBDD("DELETE FROM revue WHERE id = :id", $params);
+            $req2 = $this->conn->updateBDD("DELETE FROM document WHERE id = :id", $params);
+
+            // Vérification : si une requête a renvoyé null, on annule
+            if ($req1 == 1 && $req2 == 1) {
+                $this->conn->commit();
+                return 1;
+            } else {
+                $this->conn->rollBack();
+                return null;
+            }
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            error_log("ERREUR CRITIQUE deleteOneRevue : " . $e->getMessage());
+            return null;
+        }
+        
+    }
+    
+    /*
+     * Modifie un document de type Dvd
+     */
+    private function updateDvd($id, ?array $champs) :?int{
+        
+        if (empty($champs) || is_null($id)) {
+            error_log("ERREUR: champs vides ou ID null");
+            return null;
+        }
+        
+        try {
+            $this->conn->beginTransaction();
+
+            $champsDvd = [
+                'duree'       => $champs['Duree'] ?? null,
+                'realisateur' => $champs['Realisateur'] ?? null,
+                'synopsis'    => $champs['Synopsis'] ?? null
+            ];
+
+            $champsDocument = [
+                'titre'    => $champs['Titre'] ?? null,
+                'image'    => $champs['Image'] ?? null,
+                'idRayon'  => $champs['IdRayon'] ?? null,
+                'idPublic' => $champs['IdPublic'] ?? null,
+                'idGenre'  => $champs['IdGenre'] ?? null
+            ];
+
+            $resDoc = $this->updateOneTupleOneTable('document', $id, $champsDocument);
+            $resDvd = $this->updateOneTupleOneTable('dvd', $id, $champsDvd);
+
+            if ($resDoc === null || $resDvd === null) {
+                $this->conn->rollBack();
+                return null;
+            }
+
+            $this->conn->commit();
+            return 1;
+
+        } catch (Exception $ex) {
+            $this->conn->rollBack();
+            return null;
+        }
+    }
+    
+    /*
+     * Modifie un document de type Livre
+     */
+    private function updateLivre($id, ?array $champs) :?int{
+        
+        if (empty($champs) || is_null($id)) {
+        return null;
+        }
+        
+        try{
+            $this->conn->beginTransaction();
+            
+            $champsLivre = [
+                'ISBN'       => $champs['Isbn'] ?? null,
+                'auteur'     => $champs['Auteur'] ?? null,
+                'collection' => $champs['collection'] ?? null
+            ];
+            $champsDocument = [
+                'titre'    => $champs['Titre'] ?? null,
+                'image'    => $champs['Image'] ?? null,
+                'idRayon'  => $champs['IdRayon'] ?? null,
+                'idPublic' => $champs['IdPublic'] ?? null,
+                'idGenre'  => $champs['IdGenre'] ?? null
+            ];
+            
+            $resDoc   = $this->updateOneTupleOneTable('document', $id, $champsDocument);
+            $resLivre = $this->updateOneTupleOneTable('livre', $id, $champsLivre);
+
+            if ($resDoc === null || $resLivre === null) {
+                $this->conn->rollBack();
+                return null;
+            }
+
+            $this->conn->commit();
+            return 1;
+        } catch (Exception $ex) {
+            $this->conn->rollBack();
+            return null;
+        }
+    }
+    
+    /**
+     * insert un nouveau livre dans la BDD
+     * gère l'ajout dans les autres tables
+     * @param array|null $champs
+     * @return int
+     */
+    private function insertLivre(?array $champs) :?int{
+         
+        if (empty($champs)){
+            return null;
+        }
+        
+        $champs = array_change_key_case($champs, CASE_LOWER);
+        $champsDocument = [
+            "id" => $champs["id"] ?? null,
+            "titre" => $champs["titre"] ?? "",
+            "image" => $champs["image"] ?? "",
+            "idGenre" => $champs["idgenre"] ?? null,
+            "idPublic" => $champs["idpublic"] ?? null,
+            "idRayon" => $champs["idrayon"] ?? null
+        ];
+
+        $champsLivreDvd = [
+            "id" => $champs["id"] ?? null
+        ];
+
+        $champsLivre = [
+            "id" => $champs["id"] ?? null,
+            "ISBN" => $champs["isbn"] ?? "",
+            "auteur" => $champs["auteur"] ?? "",
+            "collection" => $champs["collection"] ?? ""
+        ];
+            try{
+            $this->conn->beginTransaction();
+            $reqDoc = $this->insertOneTupleOneTable("document", $champsDocument);
+            $reqLivreDvd = $this->insertOneTupleOneTable("livres_dvd", $champsLivreDvd);
+            $reqLivre = $this->insertOneTupleOneTable("livre", $champsLivre);
+            if ($reqDoc === null || $reqLivre === null || $reqLivreDvd === null) {
+                $this->conn->rollBack();
+                return null;
+            }
+            $this->conn->commit();
+            return 1;
+        } catch (Exception $ex) {
+            $this->conn->rollBack();
+            return null;
+        }
+    }
+    
+    /**
+    * Insère une nouvelle revue dans la base de données
+    * Gère les 2 tables : document, revue
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function insertRevue(?array $champs) :?int {
+
+       error_log("=== insertRevue appelé ===");
+       error_log("Champs reçus : " . print_r($champs, true));
+
+       if (empty($champs)) {
+           return null;
+       }
+
+       $champsDocument = [
+           "id"       => $champs["Id"] ?? null,
+           "titre"    => $champs["Titre"] ?? "",
+           "image"    => $champs["Image"] ?? "",
+           "idGenre"  => $champs["IdGenre"] ?? null,
+           "idPublic" => $champs["IdPublic"] ?? null,
+           "idRayon"  => $champs["IdRayon"] ?? null
+       ];
+
+       $champsRevue = [
+           "id"              => $champs["Id"] ?? null,
+           "periodicite"     => $champs["Periodicite"] ?? "",
+           "delaiMiseADispo" => $champs["DelaiMiseADispo"] ?? 0
+       ];
+
+       try {
+           $this->conn->beginTransaction();
+
+           // Insertion dans les 2 tables (hiérarchie d'héritage)
+           $reqDoc   = $this->insertOneTupleOneTable("document", $champsDocument);
+           $reqRevue = $this->insertOneTupleOneTable("revue", $champsRevue);
+
+           // Si une insertion échoue, rollback complet
+           if ($reqDoc === null || $reqRevue === null) {
+               $this->conn->rollBack();
+               error_log("Échec insertion : reqDoc=" . var_export($reqDoc, true) . ", reqRevue=" . var_export($reqRevue, true));
+               return null;
+           }
+
+           $this->conn->commit();
+           error_log("Revue insérée avec succès");
+           return 1;
+
+       } catch (Exception $ex) {
+           $this->conn->rollBack();
+           error_log("Erreur insertRevue : " . $ex->getMessage());
+           return null;
+       }
+   }
+    
+    /**
+    * Insère un nouveau DVD dans la base de données
+    * Gère les 3 tables : document, livres_dvd, dvd
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function insertDvd(?array $champs) :?int {
+       
+       error_log("=== insertDvd appelé ===");
+       error_log("Champs reçus : " . print_r($champs, true));
+
+       if (empty($champs)) {
+           return null;
+       }
+
+       // Pas de array_change_key_case car on reçoit du JSON C# avec majuscules
+       // On récupère directement avec les bonnes clés
+
+       $champsDocument = [
+           "id"       => $champs["Id"] ?? null,
+           "titre"    => $champs["Titre"] ?? "",
+           "image"    => $champs["Image"] ?? "",
+           "idGenre"  => $champs["IdGenre"] ?? null,
+           "idPublic" => $champs["IdPublic"] ?? null,
+           "idRayon"  => $champs["IdRayon"] ?? null
+       ];
+
+       $champsLivreDvd = [
+           "id" => $champs["Id"] ?? null
+       ];
+
+       $champsDvd = [
+           "id"          => $champs["Id"] ?? null,
+           "duree"       => $champs["Duree"] ?? null,
+           "realisateur" => $champs["Realisateur"] ?? "",
+           "synopsis"    => $champs["Synopsis"] ?? ""
+       ];
+
+       try {
+           $this->conn->beginTransaction();
+
+           // Insertion dans les 3 tables (hiérarchie d'héritage)
+           $reqDoc      = $this->insertOneTupleOneTable("document", $champsDocument);
+           $reqLivreDvd = $this->insertOneTupleOneTable("livres_dvd", $champsLivreDvd);
+           $reqDvd      = $this->insertOneTupleOneTable("dvd", $champsDvd);
+
+           // Si une insertion échoue, rollback complet
+           if ($reqDoc === null || $reqLivreDvd === null || $reqDvd === null) {
+               $this->conn->rollBack();
+               return null;
+           }
+
+           $this->conn->commit();
+           return 1;
+
+       } catch (Exception $ex) {
+           $this->conn->rollBack();
+           error_log("Erreur insertDvd : " . $ex->getMessage());
+           return null;
+       }
+   }
+   
+   /**
+    * Modifie un document de type Revue
+    * @param string|null $id
+    * @param array|null $champs
+    * @return int|null
+    */
+   private function updateRevue($id, ?array $champs) :?int{
+
+       error_log("=== updateRevue appelé ===");
+       error_log("ID : " . $id);
+       error_log("Champs reçus : " . print_r($champs, true));
+
+       if (empty($champs) || is_null($id)) {
+           error_log("ERREUR: champs vides ou ID null");
+           return null;
+       }
+
+       try {
+           $this->conn->beginTransaction();
+
+           $champsRevue = [
+               'periodicite'     => $champs['Periodicite'] ?? null,
+               'delaiMiseADispo' => $champs['DelaiMiseADispo'] ?? null
+           ];
+
+           $champsDocument = [
+               'titre'    => $champs['Titre'] ?? null,
+               'image'    => $champs['Image'] ?? null,
+               'idRayon'  => $champs['IdRayon'] ?? null,
+               'idPublic' => $champs['IdPublic'] ?? null,
+               'idGenre'  => $champs['IdGenre'] ?? null
+           ];
+
+           $resDoc   = $this->updateOneTupleOneTable('document', $id, $champsDocument);
+           $resRevue = $this->updateOneTupleOneTable('revue', $id, $champsRevue);
+
+           if ($resDoc === null || $resRevue === null) {
+               $this->conn->rollBack();
+               error_log("Échec update : resDoc=" . var_export($resDoc, true) . ", resRevue=" . var_export($resRevue, true));
+               return null;
+           }
+
+           $this->conn->commit();
+           error_log("Revue modifiée avec succès");
+           return 1;
+
+       } catch (Exception $ex) {
+           $this->conn->rollBack();
+           error_log("ERREUR CRITIQUE updateRevue : " . $ex->getMessage());
+           return null;
+       }
+   }
     
 }

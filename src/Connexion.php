@@ -112,4 +112,28 @@ class Connexion {
         }
     }
     
+    /**
+    * Démarre une transaction
+    * @return bool true si succès
+    */
+   public function beginTransaction() : bool {
+       return $this->conn->beginTransaction();
+   }
+
+   /**
+    * Valide une transaction
+    * @return bool true si succès
+    */
+   public function commit() : bool {
+       return $this->conn->commit();
+   }
+
+   /**
+    * Annule une transaction
+    * @return bool true si succès
+    */
+   public function rollBack() : bool {
+       return $this->conn->rollBack();
+   }
+    
 }
