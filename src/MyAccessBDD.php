@@ -40,6 +40,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->selectAllRevues();
             case "exemplaire" :
                 return $this->selectExemplairesRevue($champs);
+            case "commandedocument" :
+                return $this->selectCommandeDocument($champs);
             case "genre" :
             case "public" :
             case "rayon" :
@@ -71,6 +73,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->insertDvd($champs);
             case "revue" :
                 return $this->insertRevue($champs);
+            case "commandedocument" :
+                return $this->insertCommandeDocument($champs);
             default:                    
                 // cas général
                 return $this->insertOneTupleOneTable($table, $champs);	
@@ -293,6 +297,25 @@ class MyAccessBDD extends AccessBDD {
         $requete .= "where e.id = :id ";
         $requete .= "order by e.dateAchat DESC";
         return $this->conn->queryBDD($requete, $champNecessaire);
+    }
+    
+    private function selectCommandeDocument(?array $champs) : ?array{
+        if(empty($champs)){
+            return null;
+        }
+        if(!array_key_exists('id', $champs)){
+            return null;
+        }
+        $champsNecessaire['id'] = $champs['id'];
+        $requete = "SELECT co.id, co.dateCommande, co.montant, ";
+        $requete .= "cd.nbExemplaire, cd.idLivreDvd, ";
+        $requete .= "cd.idSuivi, s.libelle as libelleSuivi ";
+        $requete .= "FROM commandedocument cd ";
+        $requete .= "JOIN commande co ON cd.id = co.id ";
+        $requete .= "LEFT JOIN suivi s ON cd.idSuivi = s.id ";
+        $requete .= "WHERE cd.idLivreDvd = :id ";
+        $requete .= "ORDER BY co.dateCommande DESC";
+        return $this->conn->queryBDD($requete, $champsNecessaire);
     }
     
     /**
@@ -699,6 +722,59 @@ class MyAccessBDD extends AccessBDD {
        } catch (Exception $ex) {
            $this->conn->rollBack();
            error_log("ERREUR CRITIQUE updateRevue : " . $ex->getMessage());
+           return null;
+       }
+   }
+   
+   /**
+    * Insère une nouvelle commande de document dans la base de données
+    * Gère les 2 tables : commande, commandedocument
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function insertCommandeDocument(?array $champs) :?int {
+
+       error_log("=== insertCommandeDocument appelé ===");
+       error_log("Champs reçus : " . print_r($champs, true));
+
+       if (empty($champs)) {
+           return null;
+       }
+
+       $champsCommande = [
+           "id"           => $champs["Id"] ?? null,
+           "dateCommande" => $champs["DateCommande"] ?? null,
+           "montant"      => $champs["Montant"] ?? null
+       ];
+
+       $champsCommandeDocument = [
+           "id"           => $champs["Id"] ?? null,
+           "nbExemplaire" => $champs["NbExemplaire"] ?? null,
+           "idLivreDvd"   => $champs["IdLivreDvd"] ?? null,
+           "idSuivi"      => $champs["IdSuivi"] ?? null
+       ];
+
+       try {
+           $this->conn->beginTransaction();
+
+           // Insertion dans les 2 tables
+           $reqCommande = $this->insertOneTupleOneTable("commande", $champsCommande);
+           $reqCommandeDoc = $this->insertOneTupleOneTable("commandedocument", $champsCommandeDocument);
+
+           // Si une insertion échoue, rollback complet
+           if ($reqCommande === null || $reqCommandeDoc === null) {
+               $this->conn->rollBack();
+               error_log("Échec insertion : reqCommande=" . var_export($reqCommande, true) . ", reqCommandeDoc=" . var_export($reqCommandeDoc, true));
+               return null;
+           }
+
+           $this->conn->commit();
+           error_log("Commande insérée avec succès");
+           return 1;
+
+       } catch (Exception $ex) {
+           $this->conn->rollBack();
+           error_log("Erreur insertCommandeDocument : " . $ex->getMessage());
            return null;
        }
    }
