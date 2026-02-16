@@ -99,6 +99,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->updateDvd($id, $champs);
             case "revue" :
                 return $this->updateRevue($id, $champs);
+            case "commandedocument" :
+                return $this->updateCommandeDocument($id, $champs);
             default:                    
                 // cas général
                 return $this->updateOneTupleOneTable($table, $id, $champs);
@@ -538,6 +540,43 @@ class MyAccessBDD extends AccessBDD {
             return null;
         }
     }
+    
+    /**
+    * Modifie l'étape de suivi d'une commande de document
+    * @param string|null $id
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function updateCommandeDocument($id, ?array $champs) :?int{
+
+       if (empty($champs) || is_null($id)) {
+           return null;
+       }
+
+       if (!isset($champs['IdSuivi'])) {
+           error_log("ERREUR: IdSuivi manquant");
+           return null;
+       }
+
+       try {
+           // On ne met à jour que l'idSuivi dans commandedocument
+           $champsCommandeDocument = [
+               'idSuivi' => $champs['IdSuivi']
+           ];
+
+           $res = $this->updateOneTupleOneTable('commandedocument', $id, $champsCommandeDocument);
+
+           if ($res === null) {
+               return null;
+           }
+
+           return 1;
+
+       } catch (Exception $ex) {
+           error_log("ERREUR updateCommandeDocument : " . $ex->getMessage());
+           return null;
+       }
+   }
     
     /**
      * insert un nouveau livre dans la BDD
