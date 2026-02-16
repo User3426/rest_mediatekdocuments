@@ -122,6 +122,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->deleteOneDvd($champs);
             case "revue" :
                 return $this->deleteOneRevue($champs);
+            case "commande" :
+                return $this->deleteOneCommande($champs);
             default:                    
                 // cas général
                 return $this->deleteTuplesOneTable($table, $champs);	
@@ -421,6 +423,36 @@ class MyAccessBDD extends AccessBDD {
         }
         
     }
+    
+    /**
+    * Supprime une commande
+    * Le trigger se charge de supprimer aussi dans commandedocument
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function deleteOneCommande(?array $champs) :?int{
+
+       if(empty($champs) || !isset($champs['id'])){
+           return null;
+       }
+
+       $id = $champs['id'];
+
+       try {
+           $params = ['id' => $id];
+
+           $result = $this->conn->updateBDD("DELETE FROM commande WHERE id = :id", $params);
+
+           if ($result == 1) {
+               return 1;
+           } else {
+               return null;
+           }
+       } catch (Exception $e) {
+           error_log("ERREUR CRITIQUE deleteOneCommande : " . $e->getMessage());
+           return null;
+       }
+   }
     
     /*
      * Modifie un document de type Dvd
