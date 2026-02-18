@@ -42,6 +42,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->selectExemplairesRevue($champs);
             case "commandedocument" :
                 return $this->selectCommandeDocument($champs);
+            case "abonnement" :
+                return $this->selectAbonnement($champs) ;
             case "genre" :
             case "public" :
             case "rayon" :
@@ -75,6 +77,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->insertRevue($champs);
             case "commandedocument" :
                 return $this->insertCommandeDocument($champs);
+            case "abonnement" :
+                return $this->insertAbonnement($champs);
             default:                    
                 // cas général
                 return $this->insertOneTupleOneTable($table, $champs);	
@@ -323,6 +327,31 @@ class MyAccessBDD extends AccessBDD {
     }
     
     /**
+    * Récupère tous les abonnements d'une revue
+    * @param array|null $champs 
+    * @return array|null
+    */
+   private function selectAbonnement(?array $champs) : ?array{
+       if(empty($champs)){
+           return null;
+       }
+       if(!array_key_exists('id', $champs)){
+           return null;
+       }
+
+       $champsNecessaire['id'] = $champs['id'];
+
+       $requete = "SELECT co.id, co.dateCommande, co.montant, ";
+       $requete .= "ab.dateFinAbonnement, ab.idRevue ";
+       $requete .= "FROM abonnement ab ";
+       $requete .= "JOIN commande co ON ab.id = co.id ";
+       $requete .= "WHERE ab.idRevue = :id ";
+       $requete .= "ORDER BY co.dateCommande DESC";
+
+       return $this->conn->queryBDD($requete, $champsNecessaire);
+   }
+    
+    /**
      * Supprime un document de type livre
      * @param array|null $champs
      * @return int|null
@@ -428,7 +457,7 @@ class MyAccessBDD extends AccessBDD {
     
     /**
     * Supprime une commande
-    * Le trigger se charge de supprimer aussi dans commandedocument
+    * Le trigger se charge de supprimer aussi dans commandedocument et Abonnement
     * @param array|null $champs
     * @return int|null 1 si succès, null si erreur
     */
@@ -559,7 +588,6 @@ class MyAccessBDD extends AccessBDD {
        }
 
        try {
-           // On ne met à jour que l'idSuivi dans commandedocument
            $champsCommandeDocument = [
                'idSuivi' => $champs['IdSuivi']
            ];
@@ -660,11 +688,9 @@ class MyAccessBDD extends AccessBDD {
        try {
            $this->conn->beginTransaction();
 
-           // Insertion dans les 2 tables (hiérarchie d'héritage)
            $reqDoc   = $this->insertOneTupleOneTable("document", $champsDocument);
            $reqRevue = $this->insertOneTupleOneTable("revue", $champsRevue);
 
-           // Si une insertion échoue, rollback complet
            if ($reqDoc === null || $reqRevue === null) {
                $this->conn->rollBack();
                error_log("Échec insertion : reqDoc=" . var_export($reqDoc, true) . ", reqRevue=" . var_export($reqRevue, true));
@@ -697,9 +723,6 @@ class MyAccessBDD extends AccessBDD {
            return null;
        }
 
-       // Pas de array_change_key_case car on reçoit du JSON C# avec majuscules
-       // On récupère directement avec les bonnes clés
-
        $champsDocument = [
            "id"       => $champs["Id"] ?? null,
            "titre"    => $champs["Titre"] ?? "",
@@ -723,12 +746,10 @@ class MyAccessBDD extends AccessBDD {
        try {
            $this->conn->beginTransaction();
 
-           // Insertion dans les 3 tables (hiérarchie d'héritage)
            $reqDoc      = $this->insertOneTupleOneTable("document", $champsDocument);
            $reqLivreDvd = $this->insertOneTupleOneTable("livres_dvd", $champsLivreDvd);
            $reqDvd      = $this->insertOneTupleOneTable("dvd", $champsDvd);
 
-           // Si une insertion échoue, rollback complet
            if ($reqDoc === null || $reqLivreDvd === null || $reqDvd === null) {
                $this->conn->rollBack();
                return null;
@@ -740,6 +761,56 @@ class MyAccessBDD extends AccessBDD {
        } catch (Exception $ex) {
            $this->conn->rollBack();
            error_log("Erreur insertDvd : " . $ex->getMessage());
+           return null;
+       }
+   }
+   
+   /**
+    * Insère un nouvel abonnement dans la base de données
+    * Gère les 2 tables : commande, abonnement
+    * @param array|null $champs
+    * @return int|null 1 si succès, null si erreur
+    */
+   private function insertAbonnement(?array $champs) :?int {
+
+       error_log("=== insertAbonnement appelé ===");
+       error_log("Champs reçus : " . print_r($champs, true));
+
+       if (empty($champs)) {
+           return null;
+       }
+
+       $champsCommande = [
+           "id"           => $champs["Id"] ?? null,
+           "dateCommande" => $champs["DateCommande"] ?? null,
+           "montant"      => $champs["Montant"] ?? null
+       ];
+
+       $champsAbonnement = [
+           "id"                 => $champs["Id"] ?? null,
+           "dateFinAbonnement"  => $champs["DateFinAbonnement"] ?? null,
+           "idRevue"            => $champs["IdRevue"] ?? null
+       ];
+
+       try {
+           $this->conn->beginTransaction();
+
+           $reqCommande = $this->insertOneTupleOneTable("commande", $champsCommande);
+           $reqAbonnement = $this->insertOneTupleOneTable("abonnement", $champsAbonnement);
+
+           if ($reqCommande === null || $reqAbonnement === null) {
+               $this->conn->rollBack();
+               error_log("Échec insertion : reqCommande=" . var_export($reqCommande, true) . ", reqAbonnement=" . var_export($reqAbonnement, true));
+               return null;
+           }
+
+           $this->conn->commit();
+           error_log("Abonnement inséré avec succès");
+           return 1;
+
+       } catch (Exception $ex) {
+           $this->conn->rollBack();
+           error_log("Erreur insertAbonnement : " . $ex->getMessage());
            return null;
        }
    }
