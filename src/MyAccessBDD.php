@@ -44,6 +44,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->selectCommandeDocument($champs);
             case "abonnement" :
                 return $this->selectAbonnement($champs) ;
+            case "abonnementprochefin" :
+                return $this->selectAbonnementProcheFin();
             case "genre" :
             case "public" :
             case "rayon" :
@@ -350,6 +352,18 @@ class MyAccessBDD extends AccessBDD {
 
        return $this->conn->queryBDD($requete, $champsNecessaire);
    }
+   
+   private function selectAbonnementProcheFin() : ?array{
+
+        $requete = "SELECT doc.titre, ab.dateFinAbonnement ";
+        $requete .= "FROM abonnement ab ";
+        $requete .= "JOIN revue r ON ab.idRevue = r.id ";
+        $requete .= "JOIN document doc ON r.id = doc.id ";
+        $requete .= "WHERE ab.dateFinAbonnement BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) ";
+        $requete .= "ORDER BY ab.dateFinAbonnement ASC";
+
+        return $this->conn->queryBDD($requete, []);
+    }
     
     /**
      * Supprime un document de type livre
