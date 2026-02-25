@@ -46,6 +46,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->selectAbonnement($champs) ;
             case "abonnementprochefin" :
                 return $this->selectAbonnementProcheFin();
+            case "utilisateur":
+                return $this->selectUtilisateur($champs);
             case "genre" :
             case "public" :
             case "rayon" :
@@ -363,6 +365,22 @@ class MyAccessBDD extends AccessBDD {
         $requete .= "ORDER BY ab.dateFinAbonnement ASC";
 
         return $this->conn->queryBDD($requete, []);
+    }
+    
+    /**
+     * Vérifie l'authentification d'un utilisateur
+     * @param array|null $champs login et pwd en clair
+     * @return array|null données de l'utilisateur avec son service, ou null
+     */
+    private function selectUtilisateur(?array $champs) : ?array {
+        if (empty($champs) || !array_key_exists('login', $champs) || !array_key_exists('pwd', $champs)) {
+            return null;
+        }
+        $requete  = "SELECT u.login, s.nom as service ";
+        $requete .= "FROM utilisateur u ";
+        $requete .= "JOIN service s ON u.idservice = s.idservice ";
+        $requete .= "WHERE u.login = :login AND u.pwd = SHA2(:pwd, 256);";
+        return $this->conn->queryBDD($requete, $champs);
     }
     
     /**
