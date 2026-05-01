@@ -4,7 +4,7 @@ use Dotenv\Dotenv;
 
 
 /**
- * Singleton car la récupération des données ne peut se faire qu'une fois
+ * Singleton car la récupérationn des données ne peut se faire qu'une fois
  * Permet de gérer le contenu de l'URL qui sollicite l'API
  */
 class Url {
